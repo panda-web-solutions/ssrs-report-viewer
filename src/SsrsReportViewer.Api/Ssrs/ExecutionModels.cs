@@ -17,7 +17,9 @@ public sealed record DeviceInfo(
     /// <summary>IMAGE Export OutputFormat (e.g. TIFF).</summary>
     string? OutputFormat = null,
     /// <summary>PDF AccessiblePDF DeviceInfo (tagged / accessible PDF).</summary>
-    bool AccessiblePdf = false);
+    bool AccessiblePdf = false,
+    /// <summary>HTML FindString DeviceInfo — highlights matches on Render when Toolbar is false.</summary>
+    string? FindString = null);
 
 public sealed record RenderResult(
     byte[] Content,

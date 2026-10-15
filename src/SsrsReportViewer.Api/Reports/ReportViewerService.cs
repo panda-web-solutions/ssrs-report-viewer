@@ -430,20 +430,30 @@ public sealed partial class ReportViewerService
             session.CurrentPage = foundPage;
         }
 
-        var render = await RenderSessionAsync(session, cancellationToken);
+        // Only found Find / Find next applies HTML DeviceInfo FindString for highlight chrome (#52).
+        // FindString is not persisted on the Viewer Session — non-Find RenderSession paths omit it (#53).
+        var render = await RenderSessionAsync(
+            session,
+            cancellationToken,
+            findString: found ? findValue : null);
         return new FindResult(
             render.Html,
             found,
             new PageInfo(session.CurrentPage, session.PageCount));
     }
 
+    /// <param name="findString">
+    /// HTML DeviceInfo FindString for native highlight chrome. Pass only from found Find / Find next;
+    /// default null so View Report, Refresh, page, Zoom, Sort, and other non-Find renders stay clear (#53).
+    /// </param>
     private async Task<ViewReportResult> RenderSessionAsync(
         ViewerSession session,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? findString = null)
     {
         var resourceRoot = $"/api/sessions/{session.Id}/resources/";
         var replacementRoot = $"/api/sessions/{session.Id}/actions/";
-        var deviceInfo = CreateDeviceInfo(session, includeActionRoots: true);
+        var deviceInfo = CreateDeviceInfo(session, includeActionRoots: true, findString);
 
         var render = await _ssrs.RenderAsync(session.Execution, "HTML4.0", deviceInfo, cancellationToken);
         session.CurrentPage = render.CurrentPage;
@@ -461,7 +471,10 @@ public sealed partial class ReportViewerService
             session.Parameters);
     }
 
-    private static DeviceInfo CreateDeviceInfo(ViewerSession session, bool includeActionRoots)
+    private static DeviceInfo CreateDeviceInfo(
+        ViewerSession session,
+        bool includeActionRoots,
+        string? findString = null)
     {
         string? resourceRoot = null;
         string? replacementRoot = null;
@@ -479,7 +492,8 @@ public sealed partial class ReportViewerService
             ZoomPercent: session.ZoomPercent,
             Section: session.CurrentPage,
             ReplacementRoot: replacementRoot,
-            ResourceStreamRoot: resourceRoot);
+            ResourceStreamRoot: resourceRoot,
+            FindString: findString);
     }
 
     private static DeviceInfo CreateExportDeviceInfo(
@@ -601,6 +615,7 @@ public sealed partial class ReportViewerService
             html = html.Replace("{ReplacementRoot}", replacementRoot, StringComparison.Ordinal);
         }
 
+        html = FindHighlightNormalizer.Normalize(html);
         return ActionLinkRewriter.Rewrite(html, replacementRoot);
     }
 

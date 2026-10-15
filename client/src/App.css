@@ -1004,6 +1004,12 @@
   line-height: normal;
 }
 
+/* ReportViewer Find chrome — same token as native .searchHighlighting */
+.report-html .searchHighlighting {
+  background-color: #ffc20d;
+  color: #000;
+}
+
 /*
  * Interactive Sort chrome — Report Manager pins the icon to the far right of the
  * header cell. Native .r18 is display:inline-table (shrink-wrap); stretch only that

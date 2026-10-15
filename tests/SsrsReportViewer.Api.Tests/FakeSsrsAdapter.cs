@@ -50,6 +50,17 @@ public sealed partial class FakeSsrsAdapter : ISsrsAdapter
     /// <summary>DeviceInfo from the most recent non-HTML RenderAsync (Export) call.</summary>
     public DeviceInfo? LastExportDeviceInfo { get; private set; }
 
+    /// <summary>DeviceInfo from the most recent HTML RenderAsync call.</summary>
+    public DeviceInfo? LastHtmlDeviceInfo { get; private set; }
+
+    /// <summary>
+    /// Fake Find hit chrome matching ReportViewer <c>searchHighlighting</c> (stable for assertions).
+    /// </summary>
+    public const string FindHighlightOpenTag =
+        "<span id=\"oHit0\" class=\"searchHighlighting\">";
+
+    public const string FindHighlightCloseTag = "</span>";
+
     /// <summary>forRendering flag from the most recent GetParametersAsync call.</summary>
     public bool? LastGetParametersForRendering { get; private set; }
 
@@ -76,6 +87,7 @@ public sealed partial class FakeSsrsAdapter : ISsrsAdapter
         LastLoadedExecutionId = null;
         LastRenderedExecutionId = null;
         LastExportDeviceInfo = null;
+        LastHtmlDeviceInfo = null;
         LastGetParametersForRendering = null;
         LastSetParameters = null;
         LastGetParametersValues = null;
@@ -359,6 +371,12 @@ public sealed partial class FakeSsrsAdapter : ISsrsAdapter
             html += $"<!-- resources:{deviceInfo.ResourceStreamRoot} -->";
         }
 
+        LastHtmlDeviceInfo = deviceInfo;
+        if (!string.IsNullOrWhiteSpace(deviceInfo.FindString))
+        {
+            html = WrapFirstFindMatch(html, deviceInfo.FindString);
+        }
+
         // Expose DeviceInfo Zoom / Section and Execution id so HTTP tests can assert SSRS re-render.
         html =
             $"<div data-exec=\"{exec.Id}\" data-zoom=\"{deviceInfo.ZoomPercent}\" data-page=\"{page}\">{html}</div>";
@@ -611,6 +629,22 @@ public sealed partial class FakeSsrsAdapter : ISsrsAdapter
         }
 
         return exec;
+    }
+
+    private static string WrapFirstFindMatch(string html, string findString)
+    {
+        var index = html.IndexOf(findString, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            return html;
+        }
+
+        var matched = html.Substring(index, findString.Length);
+        return html[..index]
+            + FindHighlightOpenTag
+            + matched
+            + FindHighlightCloseTag
+            + html[(index + findString.Length)..];
     }
 
     private static string NormalizePath(string path)

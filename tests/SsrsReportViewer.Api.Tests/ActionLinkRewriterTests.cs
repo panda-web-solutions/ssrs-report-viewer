@@ -244,6 +244,30 @@ public sealed class ActionLinkRewriterTests
         Assert.DoesNotContain("rs:Command=Sort", rewritten, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Rewrite_preserves_find_highlight_markup_alongside_action_links()
+    {
+        const string highlight =
+            FakeSsrsAdapter.FindHighlightOpenTag + "Log" + FakeSsrsAdapter.FindHighlightCloseTag;
+        var html =
+            $"""
+            <div class="report">
+              <TD>{highlight} column</TD>
+              <a href="/api/sessions/s1/actions/?rc:SortItem=Region&amp;rc:SortDirection=Ascending">
+                <IMG ALT="Unsorted" BORDER="0" SRC="/api/sessions/s1/resources/unsorted.gif"/>
+              </a>
+              <a href="https://contoso.example/help">{highlight} help</a>
+            </div>
+            """;
+
+        var rewritten = ActionLinkRewriter.Rewrite(html, "/api/sessions/s1/actions/");
+
+        Assert.Contains(highlight + " column", rewritten, StringComparison.Ordinal);
+        Assert.Contains("data-ssrs-action=\"sort\"", rewritten, StringComparison.Ordinal);
+        Assert.Contains(highlight + " help", rewritten, StringComparison.Ordinal);
+        Assert.Contains("data-ssrs-action=\"external\"", rewritten, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("Sorted Ascending", true, "M4.5 10.5h7L8 5z")]
     [InlineData("Sorted Descending", true, "M4.5 5.5h7L8 11z")]

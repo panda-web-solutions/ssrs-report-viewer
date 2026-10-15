@@ -290,6 +290,66 @@ public sealed class SoapSsrsAdapterTests
     }
 
     [Fact]
+    public void ToDeviceInfoXml_emits_escaped_FindString_when_set()
+    {
+        var xml = SoapSsrsAdapter.ToDeviceInfoXml(new DeviceInfo(
+            HtmlFragment: false,
+            Toolbar: false,
+            FindString: "log & <hit>"));
+
+        Assert.Contains("<FindString>log &amp; &lt;hit&gt;</FindString>", xml, StringComparison.Ordinal);
+        Assert.Contains("<Toolbar>false</Toolbar>", xml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ToDeviceInfoXml_omits_FindString_when_null_or_whitespace()
+    {
+        var nullXml = SoapSsrsAdapter.ToDeviceInfoXml(new DeviceInfo(FindString: null));
+        var blankXml = SoapSsrsAdapter.ToDeviceInfoXml(new DeviceInfo(FindString: "   "));
+
+        Assert.DoesNotContain("<FindString>", nullXml, StringComparison.Ordinal);
+        Assert.DoesNotContain("<FindString>", blankXml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ParseFindStringPage_prefers_PageNumber_like_ReportExecution2005_wsdl()
+    {
+        const string soap = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+              <soap:Body>
+                <FindStringResponse xmlns="http://schemas.microsoft.com/sqlserver/2005/06/30/reporting/reportingservices">
+                  <PageNumber>2</PageNumber>
+                </FindStringResponse>
+              </soap:Body>
+            </soap:Envelope>
+            """;
+
+        var page = SoapSsrsAdapter.ParseFindStringPage(System.Xml.Linq.XDocument.Parse(soap));
+
+        Assert.Equal(2, page);
+    }
+
+    [Fact]
+    public void ParseFindStringPage_falls_back_to_FindStringResult()
+    {
+        const string soap = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+              <soap:Body>
+                <FindStringResponse xmlns="http://schemas.microsoft.com/sqlserver/2005/06/30/reporting/reportingservices">
+                  <FindStringResult>3</FindStringResult>
+                </FindStringResponse>
+              </soap:Body>
+            </soap:Envelope>
+            """;
+
+        var page = SoapSsrsAdapter.ParseFindStringPage(System.Xml.Linq.XDocument.Parse(soap));
+
+        Assert.Equal(3, page);
+    }
+
+    [Fact]
     public async Task ListChildren_maps_item_not_found_fault_to_CatalogPathNotFoundException()
     {
         const string soap = """

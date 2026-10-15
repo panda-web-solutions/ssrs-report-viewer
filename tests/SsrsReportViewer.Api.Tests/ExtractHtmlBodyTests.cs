@@ -31,4 +31,25 @@ public sealed class ExtractHtmlBodyTests
         const string fragment = "<DIV class=\"report\">rows</DIV>";
         Assert.Equal(fragment, ReportViewerService.ExtractHtmlBody(fragment));
     }
+
+    [Fact]
+    public void ExtractHtmlBody_preserves_find_highlight_markup_in_body()
+    {
+        const string highlight =
+            FakeSsrsAdapter.FindHighlightOpenTag + "Log" + FakeSsrsAdapter.FindHighlightCloseTag;
+        var html =
+            "<!DOCTYPE HTML>"
+            + "<html><head><title>Report</title>"
+            + "<style type=\"text/css\">.a150{border:1px solid Black;}</style>"
+            + "</head>"
+            + "<body><DIV ID=\"oReportDiv\"><TABLE><TR><TD>"
+            + highlight
+            + " header</TD></TR></TABLE></DIV></body></html>";
+
+        var fragment = ReportViewerService.ExtractHtmlBody(html);
+
+        Assert.Contains(highlight, fragment, StringComparison.Ordinal);
+        Assert.Contains("header", fragment, StringComparison.Ordinal);
+        Assert.DoesNotContain("<body>", fragment, StringComparison.OrdinalIgnoreCase);
+    }
 }
